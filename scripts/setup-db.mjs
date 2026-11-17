@@ -259,7 +259,7 @@ async function seedDemo() {
   await sql.query(`delete from approvals where client_id = $1 and status = 'pending'`, [cid]);
   for (const [type, icon, color, d, title, detail] of approvals) {
     await sql.query(
-      `insert into approvals (client_id, type, icon, color, requested_on, title, detail) values ($1, $2, $3, $4, $5, $6)`,
+      `insert into approvals (client_id, type, icon, color, requested_on, title, detail) values ($1, $2, $3, $4, $5, $6, $7)`,
       [cid, type, icon, color, d, title, detail]
     );
   }

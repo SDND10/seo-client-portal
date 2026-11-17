@@ -48,6 +48,16 @@ Built with Next.js (App Router) + Neon serverless Postgres.
 
    The demo client login is `demo@northsideplumbing.com.au` / `demo-password-123`.
 
+   For quick local testing you can also create throwaway logins
+   (`master`/`master` as admin, `test`/`test` as a client with random data):
+
+   ```bash
+   node --env-file=.env scripts/seed-test-users.mjs
+   ```
+
+   **These are deliberately weak credentials — delete them before real clients
+   use the portal**: `delete from users where email in ('master', 'test');`
+
 4. **Run it**:
 
    ```bash

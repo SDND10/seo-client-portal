@@ -54,6 +54,8 @@ function validEmail(v: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 }
 
+// Login accepts an email address or a plain username; the email-format check
+// is only used by the password-reset view.
 export default function LoginPage() {
   const router = useRouter();
   const [view, setView] = useState<"login" | "reset">("login");
@@ -66,7 +68,7 @@ export default function LoginPage() {
 
   async function submitLogin(e: React.FormEvent) {
     e.preventDefault();
-    if (!validEmail(email)) return setError("Enter a valid email address");
+    if (!email.trim()) return setError("Enter your email or username");
     if (!password) return setError("Enter your password");
     setBusy(true);
     setError("");
@@ -166,9 +168,9 @@ export default function LoginPage() {
               <label style={labelStyle}>
                 Email
                 <input
-                  type="email"
+                  type="text"
                   value={email}
-                  autoComplete="email"
+                  autoComplete="username"
                   placeholder="you@yourbusiness.com.au"
                   onChange={(e) => { setEmail(e.target.value); setError(""); setResetSent(false); }}
                   style={inputStyle}
