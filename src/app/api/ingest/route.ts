@@ -99,13 +99,13 @@ export async function POST(req: NextRequest) {
     }
   } else {
     const ref = typeof body.client === "string" ? body.client.trim() : null;
-    if (!ref) return bad('Missing "client" (the client ID, e.g. "C1001") or "create_client"');
+    if (!ref) return bad('Missing "client" (the 10-digit client ID) or "create_client"');
 
-    // Accept the client ID (C1001), the slug, or the raw uuid.
+    // Accept the 10-digit client ID, the slug, or the raw uuid.
     const clients = (await sql`
       select id, client_code from clients
       where client_code = ${ref} or slug = ${ref} or id::text = ${ref}`) as { id: string; client_code: string }[];
-    if (!clients[0]) return bad(`Unknown client "${ref}". Use the client ID shown in the admin area (e.g. "C1001").`, 404);
+    if (!clients[0]) return bad(`Unknown client "${ref}". Use the 10-digit client ID shown in the admin area.`, 404);
     cid = clients[0].id;
     clientCode = clients[0].client_code;
   }
@@ -328,7 +328,7 @@ export async function GET(req: NextRequest) {
     return bad("Invalid or missing API key", 401);
   }
   const ref = (req.nextUrl.searchParams.get("client") || "").trim();
-  if (!ref) return bad('Missing "client" query parameter (the client ID, e.g. "C1001")');
+  if (!ref) return bad('Missing "client" query parameter (the 10-digit client ID)');
   const clients = (await sql`
     select id, client_code from clients
     where client_code = ${ref} or slug = ${ref} or id::text = ${ref}`) as { id: string; client_code: string }[];

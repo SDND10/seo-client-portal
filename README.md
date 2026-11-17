@@ -88,14 +88,14 @@ Content-Type: application/json
 Every section is optional — send only what changed. All writes are upserts, so
 re-sending the same data is safe (no duplicates).
 
-Every client has a short **client ID** like `C1001`, shown on their row in
+Every client has a short **client ID** like a random 10-digit number (e.g. `5176666714`), shown on their row in
 `/admin` (and in the response when you create a client). That ID is what you
 reference in Grok bot. The API also accepts the slug, but the ID is the
 canonical reference.
 
 ```jsonc
 {
-  "client": "C1001",                       // the client ID (shown in /admin)
+  "client": "5176666714",                  // the 10-digit client ID (shown in /admin)
 
   "traffic": [
     { "month": "2026-10", "visits": 1120 },
@@ -169,7 +169,7 @@ Example curl:
 curl -X POST https://your-portal-domain/api/ingest \
   -H "Authorization: Bearer $INGEST_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"client":"C1001","ai_checks":[{"date":"2026-12-01","score":66}]}'
+  -d '{"client":"5176666714","ai_checks":[{"date":"2026-12-01","score":66}]}'
 ```
 
 ### Creating a client from the bot
@@ -195,7 +195,7 @@ The bot can also create clients itself — send `create_client` instead of
 }
 ```
 
-The response includes the new ID: `{"ok": true, "client": "C1003", "created": true}`.
+The response includes the new ID: `{"ok": true, "client": "8631042957", "created": true}`.
 The bot should store that ID and use it for all future updates. Re-sending the
 same `create_client` is safe — it returns the existing ID instead of a duplicate.
 
@@ -204,7 +204,7 @@ same `create_client` is safe — it returns the existing ID instead of a duplica
 Clients approve/reject actions in the portal. Your bot polls for decisions:
 
 ```
-GET /api/ingest?client=C1001&decisions=2026-11-01
+GET /api/ingest?client=5176666714&decisions=2026-11-01
 Authorization: Bearer <INGEST_API_KEY>
 ```
 

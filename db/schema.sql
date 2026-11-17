@@ -2,11 +2,10 @@
 
 create extension if not exists pgcrypto;
 
-create sequence if not exists client_code_seq start 1001;
-
 create table if not exists clients (
   id uuid primary key default gen_random_uuid(),
-  client_code text unique not null default ('C' || nextval('client_code_seq')),
+  -- Random 10-digit ID (not sequential, so client count is not guessable)
+  client_code text unique not null default lpad(floor(random() * 10000000000)::bigint::text, 10, '0'),
   slug text unique not null,
   business_name text not null,
   contact_name text,
