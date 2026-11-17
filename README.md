@@ -88,9 +88,14 @@ Content-Type: application/json
 Every section is optional — send only what changed. All writes are upserts, so
 re-sending the same data is safe (no duplicates).
 
+Every client has a short **client ID** like `C1001`, shown on their row in
+`/admin` (and in the response when you create a client). That ID is what you
+reference in Grok bot. The API also accepts the slug, but the ID is the
+canonical reference.
+
 ```jsonc
 {
-  "client": "northside-plumbing",          // the client slug (shown in /admin)
+  "client": "C1001",                       // the client ID (shown in /admin)
 
   "traffic": [
     { "month": "2026-10", "visits": 1120 },
@@ -164,7 +169,7 @@ Example curl:
 curl -X POST https://your-portal-domain/api/ingest \
   -H "Authorization: Bearer $INGEST_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"client":"northside-plumbing","ai_checks":[{"date":"2026-12-01","score":66}]}'
+  -d '{"client":"C1001","ai_checks":[{"date":"2026-12-01","score":66}]}'
 ```
 
 ### Reading approval decisions back
@@ -172,7 +177,7 @@ curl -X POST https://your-portal-domain/api/ingest \
 Clients approve/reject actions in the portal. Your bot polls for decisions:
 
 ```
-GET /api/ingest?client=northside-plumbing&decisions=2026-11-01
+GET /api/ingest?client=C1001&decisions=2026-11-01
 Authorization: Bearer <INGEST_API_KEY>
 ```
 

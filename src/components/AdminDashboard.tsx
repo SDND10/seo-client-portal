@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 type ClientSummary = {
+  client_code: string;
   slug: string;
   business_name: string;
   contact_name: string | null;
@@ -20,6 +21,7 @@ export function AdminDashboard({ clients }: { clients: ClientSummary[] }) {
   const [showForm, setShowForm] = useState(clients.length === 0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [form, setForm] = useState({
     business_name: "", contact_name: "", email: "", phone: "", website: "",
     suburb: "", state: "", postcode: "", lat: "", lng: "",
@@ -52,6 +54,7 @@ export function AdminDashboard({ clients }: { clients: ClientSummary[] }) {
       return;
     }
     if (data.warning) setError(data.warning);
+    setNotice(data.client_code ? `Client created — ID ${data.client_code}. Use this ID in Grok bot.` : "Client created.");
     setShowForm(false);
     setForm({
       business_name: "", contact_name: "", email: "", phone: "", website: "",
@@ -120,6 +123,9 @@ export function AdminDashboard({ clients }: { clients: ClientSummary[] }) {
           </form>
         )}
 
+        {notice && (
+          <div style={{ marginTop: 14, fontSize: 14, fontWeight: 700, color: "var(--ok)" }}>{notice}</div>
+        )}
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 18 }}>
           {clients.map((c) => (
             <div key={c.slug} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "12px 14px", padding: "14px 16px", borderRadius: 16, background: "var(--tile)" }}>
@@ -133,6 +139,12 @@ export function AdminDashboard({ clients }: { clients: ClientSummary[] }) {
                 </div>
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, fontSize: 13, fontWeight: 700 }}>
+                <span
+                  title="Client ID — use this in Grok bot"
+                  style={{ padding: "5px 12px", borderRadius: 999, background: "#0e1a3a", color: "#ffffff", fontVariantNumeric: "tabular-nums" }}
+                >
+                  ID: {c.client_code}
+                </span>
                 <span style={{ padding: "5px 12px", borderRadius: 999, background: "var(--card)" }}>
                   {c.keywords} keywords
                 </span>

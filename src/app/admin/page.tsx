@@ -11,12 +11,13 @@ export default async function AdminPage() {
   if (session.role !== "admin") redirect("/");
 
   const clients = (await sql`
-    select c.slug, c.business_name, c.contact_name, c.suburb, c.state, c.start_date::text as start_date,
+    select c.client_code, c.slug, c.business_name, c.contact_name, c.suburb, c.state, c.start_date::text as start_date,
       (select count(*)::int from approvals a where a.client_id = c.id and a.status = 'pending') as pending,
       (select count(*)::int from keywords k where k.client_id = c.id) as keywords,
       (select max(l.occurred_on)::text from activity_log l where l.client_id = c.id) as last_activity
     from clients c
     order by c.business_name`) as {
+    client_code: string;
     slug: string;
     business_name: string;
     contact_name: string | null;

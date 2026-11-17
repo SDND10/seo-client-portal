@@ -48,8 +48,9 @@ export async function POST(req: NextRequest) {
             ${str(body.website)}, ${str(body.street)}, ${str(body.suburb)}, ${str(body.state)}, ${str(body.postcode)},
             ${num(body.lat)}, ${num(body.lng)},
             ${String(body.start_date ?? "").slice(0, 10) || new Date().toISOString().slice(0, 10)})
-    returning id`) as { id: string }[];
+    returning id, client_code`) as { id: string; client_code: string }[];
   const clientId = rows[0]!.id;
+  const clientCode = rows[0]!.client_code;
 
   const loginEmail = String(body.login_email ?? "").trim().toLowerCase();
   const loginPassword = String(body.login_password ?? "");
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
     const taken = (await sql`select 1 from users where email = ${loginEmail}`) as unknown[];
     if (taken.length) {
       return NextResponse.json(
-        { ok: true, slug, warning: `Client created, but login email ${loginEmail} is already in use.` },
+        { ok: true, slug, client_code: clientCode, warning: `Client created (ID ${clientCode}), but login email ${loginEmail} is already in use.` },
       );
     }
     const hash = bcrypt.hashSync(loginPassword, 12);
@@ -69,5 +70,5 @@ export async function POST(req: NextRequest) {
       values (${clientId}, ${loginEmail}, ${str(body.contact_name) ?? businessName}, ${hash}, 'client')`;
   }
 
-  return NextResponse.json({ ok: true, slug });
+  return NextResponse.json({ ok: true, slug, client_code: clientCode });
 }

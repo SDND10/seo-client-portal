@@ -33,12 +33,16 @@ export async function POST(req: NextRequest) {
     return bad("Body must be JSON");
   }
 
-  const slug = typeof body.client === "string" ? body.client : null;
-  if (!slug) return bad('Missing "client" (the client slug)');
+  const ref = typeof body.client === "string" ? body.client.trim() : null;
+  if (!ref) return bad('Missing "client" (the client ID, e.g. "C1001")');
 
-  const clients = (await sql`select id from clients where slug = ${slug}`) as { id: string }[];
-  if (!clients[0]) return bad(`Unknown client "${slug}". Create the client in the admin area first.`, 404);
+  // Accept the client ID (C1001), the slug, or the raw uuid.
+  const clients = (await sql`
+    select id, client_code from clients
+    where client_code = ${ref} or slug = ${ref} or id::text = ${ref}`) as { id: string; client_code: string }[];
+  if (!clients[0]) return bad(`Unknown client "${ref}". Use the client ID shown in the admin area (e.g. "C1001").`, 404);
   const cid = clients[0].id;
+  const clientCode = clients[0].client_code;
 
   const result: Record<string, number> = {};
 
@@ -240,7 +244,7 @@ export async function POST(req: NextRequest) {
     return bad("Database error while saving data", 500);
   }
 
-  return NextResponse.json({ ok: true, client: slug, saved: result });
+  return NextResponse.json({ ok: true, client: clientCode, saved: result });
 }
 
 // GET /api/ingest?client=<slug>&decisions=since-iso-date
@@ -251,10 +255,12 @@ export async function GET(req: NextRequest) {
   if (!key || auth !== `Bearer ${key}`) {
     return bad("Invalid or missing API key", 401);
   }
-  const slug = req.nextUrl.searchParams.get("client");
-  if (!slug) return bad('Missing "client" query parameter');
-  const clients = (await sql`select id from clients where slug = ${slug}`) as { id: string }[];
-  if (!clients[0]) return bad(`Unknown client "${slug}"`, 404);
+  const ref = (req.nextUrl.searchParams.get("client") || "").trim();
+  if (!ref) return bad('Missing "client" query parameter (the client ID, e.g. "C1001")');
+  const clients = (await sql`
+    select id, client_code from clients
+    where client_code = ${ref} or slug = ${ref} or id::text = ${ref}`) as { id: string; client_code: string }[];
+  if (!clients[0]) return bad(`Unknown client "${ref}"`, 404);
 
   const since = req.nextUrl.searchParams.get("decisions") || "1970-01-01";
   const rows = await sql`
@@ -262,5 +268,5 @@ export async function GET(req: NextRequest) {
     from approvals
     where client_id = ${clients[0].id} and status <> 'pending' and decided_at >= ${since}
     order by decided_at desc`;
-  return NextResponse.json({ ok: true, client: slug, decisions: rows });
+  return NextResponse.json({ ok: true, client: clients[0].client_code, decisions: rows });
 }
