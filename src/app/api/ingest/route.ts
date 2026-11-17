@@ -9,6 +9,7 @@
 // See README.md for full payload examples.
 
 import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -17,6 +18,14 @@ type Json = Record<string, unknown>;
 
 function bad(msg: string, status = 400) {
   return NextResponse.json({ error: msg }, { status });
+}
+
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
 }
 
 export async function POST(req: NextRequest) {
@@ -33,16 +42,73 @@ export async function POST(req: NextRequest) {
     return bad("Body must be JSON");
   }
 
-  const ref = typeof body.client === "string" ? body.client.trim() : null;
-  if (!ref) return bad('Missing "client" (the client ID, e.g. "C1001")');
+  let cid: string;
+  let clientCode: string;
+  let createdClient = false;
+  const warnings: string[] = [];
 
-  // Accept the client ID (C1001), the slug, or the raw uuid.
-  const clients = (await sql`
-    select id, client_code from clients
-    where client_code = ${ref} or slug = ${ref} or id::text = ${ref}`) as { id: string; client_code: string }[];
-  if (!clients[0]) return bad(`Unknown client "${ref}". Use the client ID shown in the admin area (e.g. "C1001").`, 404);
-  const cid = clients[0].id;
-  const clientCode = clients[0].client_code;
+  // --- Create a client: { "create_client": { business_name, ... } }
+  // Idempotent: if a client with the same name/slug already exists, its ID is
+  // returned instead of an error, so the bot can safely retry.
+  if (body.create_client && typeof body.create_client === "object") {
+    const c = body.create_client as Json;
+    const businessName = String(c.business_name ?? "").trim();
+    if (!businessName) return bad('create_client.business_name is required');
+    const slug = slugify(String(c.slug ?? "") || businessName);
+    if (!slug) return bad("Could not build a slug from that business name");
+
+    const str = (v: unknown) => (v == null || v === "" ? null : String(v).trim().slice(0, 300));
+    const num = (v: unknown) => (v == null || v === "" || Number.isNaN(Number(v)) ? null : Number(v));
+
+    const existing = (await sql`
+      select id, client_code from clients where slug = ${slug}`) as { id: string; client_code: string }[];
+    if (existing[0]) {
+      cid = existing[0].id;
+      clientCode = existing[0].client_code;
+      warnings.push(`Client already existed; using ${clientCode}.`);
+    } else {
+      const rows = (await sql`
+        insert into clients (slug, business_name, contact_name, email, phone, website, street, suburb, state, postcode, lat, lng, start_date)
+        values (${slug}, ${businessName}, ${str(c.contact_name)}, ${str(c.email)}, ${str(c.phone)},
+                ${str(c.website)}, ${str(c.street)}, ${str(c.suburb)}, ${str(c.state)}, ${str(c.postcode)},
+                ${num(c.lat)}, ${num(c.lng)},
+                ${String(c.start_date ?? "").slice(0, 10) || new Date().toISOString().slice(0, 10)})
+        returning id, client_code`) as { id: string; client_code: string }[];
+      cid = rows[0]!.id;
+      clientCode = rows[0]!.client_code;
+      createdClient = true;
+    }
+
+    // Optional portal login for the new client.
+    const loginEmail = String(c.login_email ?? "").trim().toLowerCase();
+    const loginPassword = String(c.login_password ?? "");
+    if (loginEmail && loginPassword) {
+      if (loginPassword.length < 8) {
+        warnings.push("login_password must be at least 8 characters - no login was created.");
+      } else {
+        const taken = (await sql`select 1 from users where email = ${loginEmail}`) as unknown[];
+        if (taken.length) {
+          warnings.push(`Login email ${loginEmail} is already in use - no login was created.`);
+        } else {
+          const hash = bcrypt.hashSync(loginPassword, 12);
+          await sql`
+            insert into users (client_id, email, name, password_hash, role)
+            values (${cid}, ${loginEmail}, ${str(c.contact_name) ?? businessName}, ${hash}, 'client')`;
+        }
+      }
+    }
+  } else {
+    const ref = typeof body.client === "string" ? body.client.trim() : null;
+    if (!ref) return bad('Missing "client" (the client ID, e.g. "C1001") or "create_client"');
+
+    // Accept the client ID (C1001), the slug, or the raw uuid.
+    const clients = (await sql`
+      select id, client_code from clients
+      where client_code = ${ref} or slug = ${ref} or id::text = ${ref}`) as { id: string; client_code: string }[];
+    if (!clients[0]) return bad(`Unknown client "${ref}". Use the client ID shown in the admin area (e.g. "C1001").`, 404);
+    cid = clients[0].id;
+    clientCode = clients[0].client_code;
+  }
 
   const result: Record<string, number> = {};
 
@@ -244,7 +310,13 @@ export async function POST(req: NextRequest) {
     return bad("Database error while saving data", 500);
   }
 
-  return NextResponse.json({ ok: true, client: clientCode, saved: result });
+  return NextResponse.json({
+    ok: true,
+    client: clientCode,
+    ...(createdClient ? { created: true } : {}),
+    ...(warnings.length ? { warnings } : {}),
+    saved: result,
+  });
 }
 
 // GET /api/ingest?client=<slug>&decisions=since-iso-date

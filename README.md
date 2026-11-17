@@ -172,6 +172,33 @@ curl -X POST https://your-portal-domain/api/ingest \
   -d '{"client":"C1001","ai_checks":[{"date":"2026-12-01","score":66}]}'
 ```
 
+### Creating a client from the bot
+
+The bot can also create clients itself — send `create_client` instead of
+`client` (and optionally feed data in the same request):
+
+```jsonc
+{
+  "create_client": {
+    "business_name": "Fast Flow Plumbing",     // required; everything else optional
+    "contact_name": "Jane Smith",
+    "email": "jane@fastflow.com.au",
+    "phone": "07 3000 1234",
+    "website": "fastflow.com.au",
+    "suburb": "Brisbane", "state": "QLD", "postcode": "4000",
+    "lat": -27.4698, "lng": 153.0251,          // centres the Maps heatmap
+    "start_date": "2026-11-18",
+    "login_email": "jane@fastflow.com.au",     // optional: portal login for the client
+    "login_password": "a-strong-password"      // min 8 characters
+  },
+  "keywords": [ ... ]                          // optional: seed data in the same call
+}
+```
+
+The response includes the new ID: `{"ok": true, "client": "C1003", "created": true}`.
+The bot should store that ID and use it for all future updates. Re-sending the
+same `create_client` is safe — it returns the existing ID instead of a duplicate.
+
 ### Reading approval decisions back
 
 Clients approve/reject actions in the portal. Your bot polls for decisions:
